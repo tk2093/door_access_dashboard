@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masjid Access Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Mobile Header -->
+        <header class="mobile-header">
+            <button class="menu-toggle" id="menu-toggle" aria-label="Toggle menu">
+                <i data-lucide="menu"></i>
+            </button>
+            <div class="mobile-logo">
+                <div class="logo-icon">
+                    <i data-lucide="building-2"></i>
+                </div>
+                <span class="logo-text">Access Hub</span>
+            </div>
+            <button class="mobile-sync" id="mobile-sync-btn" aria-label="Sync">
+                <i data-lucide="refresh-cw"></i>
+            </button>
+        </header>
+
+        <!-- Overlay for mobile -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="building-2"></i>
+                </div>
+                <span class="logo-text">Access Hub</span>
+            </div>
+            
+            <nav class="nav">
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-view="logs">
+                    <i data-lucide="scroll-text"></i>
+                    <span>Access Logs</span>
+                </a>
+                <a href="#" class="nav-item" data-view="users">
+                    <i data-lucide="users"></i>
+                    <span>Users</span>
+                </a>
+                <a href="#" class="nav-item" data-view="doors">
+                    <i data-lucide="door-open"></i>
+                    <span>Doors</span>
+                </a>
+            </nav>
+            
+            <div class="sync-panel">
+                <div class="sync-status">
+                    <span class="sync-dot"></span>
+                    <span id="sync-status-text">Ready</span>
+                </div>
+                <button id="sync-btn" class="sync-btn">
+                    <i data-lucide="refresh-cw" class="sync-icon"></i>
+                    Sync Now
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view active">
+                <header class="view-header">
+                    <div class="view-header-row">
+                        <div>
+                            <h1>Dashboard</h1>
+                            <p class="subtitle">Access overview for your Masjid</p>
+                        </div>
+                        <div class="dashboard-date-filter">
+                            <select id="dashboard-date-range" class="filter-select">
+                                <option value="last7">Last 7 Days</option>
+                                <option value="last30" selected>Last 30 Days</option>
+                                <option value="last90">Last 90 Days</option>
+                                <option value="thisMonth">This Month</option>
+                                <option value="lastMonth">Last Month</option>
+                                <option value="thisYear">This Year</option>
+                                <option value="custom">Custom Range...</option>
+                            </select>
+                            <div id="dashboard-custom-range" class="custom-date-range hidden">
+                                <input type="date" id="dashboard-start-date" class="date-input">
+                                <span class="date-separator">to</span>
+                                <input type="date" id="dashboard-end-date" class="date-input">
+                                <button id="dashboard-apply-custom" class="filter-btn">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card clickable" data-filter="today">
+                        <div class="stat-icon blue">
+                            <i data-lucide="calendar-check"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="stat-today">-</span>
+                            <span class="stat-label">Today</span>
+                        </div>
+                    </div>
+                    <div class="stat-card clickable" data-filter="week">
+                        <div class="stat-icon green">
+                            <i data-lucide="calendar-days"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="stat-week">-</span>
+                            <span class="stat-label">This Week</span>
+                        </div>
+                    </div>
+                    <div class="stat-card clickable" data-filter="month">
+                        <div class="stat-icon purple">
+                            <i data-lucide="calendar-range"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="stat-month">-</span>
+                            <span class="stat-label">This Month</span>
+                        </div>
+                    </div>
+                    <div class="stat-card clickable" data-filter="active-users">
+                        <div class="stat-icon orange">
+                            <i data-lucide="user-check"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="stat-active">-</span>
+                            <span class="stat-label">Active Users (7d)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Hourly Activity</h3>
+                        <p class="chart-subtitle">When people access the Masjid</p>
+                        <div class="chart-container">
+                            <canvas id="chart-hourly"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Weekly Pattern</h3>
+                        <p class="chart-subtitle">Access by day of week</p>
+                        <div class="chart-container">
+                            <canvas id="chart-weekday"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card wide">
+                        <h3>Daily Trend</h3>
+                        <p class="chart-subtitle">Access over the last 30 days</p>
+                        <div class="chart-container">
+                            <canvas id="chart-daily"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Top Doors</h3>
+                        <p class="chart-subtitle">Most used entry points</p>
+                        <div class="chart-container">
+                            <canvas id="chart-doors"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Top Users</h3>
+                        <p class="chart-subtitle">Most frequent visitors</p>
+                        <div class="chart-container">
+                            <canvas id="chart-users"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Access Logs View -->
+            <div id="view-logs" class="view">
+                <header class="view-header">
+                    <h1>Access Logs</h1>
+                    <p class="subtitle">Complete history of door access</p>
+                </header>
+
+                <div class="filters-bar">
+                    <div class="search-wrapper">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="search-logs" class="search-input" placeholder="Search by name or door...">
+                    </div>
+                    <div class="multi-select-dropdown" id="door-dropdown">
+                        <button type="button" class="multi-select-trigger" id="door-trigger">
+                            <span class="multi-select-text">All Doors</span>
+                            <i data-lucide="chevron-down"></i>
+                        </button>
+                        <div class="multi-select-menu" id="door-menu">
+                            <div class="multi-select-header">
+                                <label class="multi-select-option select-all">
+                                    <input type="checkbox" id="door-select-all">
+                                    <span>Select All</span>
+                                </label>
+                            </div>
+                            <div class="multi-select-options" id="door-options">
+                                <!-- Options populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                    <select id="filter-date-range" class="filter-select">
+                        <option value="">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="last7">Last 7 Days</option>
+                        <option value="last30">Last 30 Days</option>
+                        <option value="thisMonth">This Month</option>
+                        <option value="lastMonth">Last Month</option>
+                        <option value="custom">Custom Range...</option>
+                    </select>
+                    <div id="custom-date-range" class="custom-date-range hidden">
+                        <input type="date" id="filter-start-date" class="date-input" placeholder="Start">
+                        <span class="date-separator">to</span>
+                        <input type="date" id="filter-end-date" class="date-input" placeholder="End">
+                    </div>
+                    <button id="clear-filters" class="filter-btn secondary">
+                        <i data-lucide="x"></i> Clear
+                    </button>
+                    <button id="export-csv" class="filter-btn secondary">
+                        <i data-lucide="download"></i> Export
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table" id="logs-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort="timestamp">
+                                    Time <i data-lucide="arrow-up-down"></i>
+                                </th>
+                                <th class="sortable" data-sort="user_name">
+                                    User <i data-lucide="arrow-up-down"></i>
+                                </th>
+                                <th class="sortable" data-sort="door_name">
+                                    Door <i data-lucide="arrow-up-down"></i>
+                                </th>
+                                <th>Event</th>
+                                <th>Credential</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-tbody">
+                            <tr><td colspan="5" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination" id="logs-pagination"></div>
+            </div>
+
+            <!-- Users View -->
+            <div id="view-users" class="view">
+                <header class="view-header">
+                    <h1>Users</h1>
+                    <p class="subtitle">People with access to the Masjid</p>
+                </header>
+
+                <div class="filters-bar">
+                    <div class="search-wrapper">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="search-users" class="search-input" placeholder="Search users...">
+                    </div>
+                    <select id="filter-user-status" class="filter-select">
+                        <option value="">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                    </select>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table" id="users-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort="last_name">
+                                    Name <i data-lucide="arrow-up-down"></i>
+                                </th>
+                                <th class="sortable" data-sort="email">
+                                    Email <i data-lucide="arrow-up-down"></i>
+                                </th>
+                                <th>Status</th>
+                                <th>Accesses</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            <tr><td colspan="4" class="loading">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination" id="users-pagination"></div>
+            </div>
+
+            <!-- Doors View -->
+            <div id="view-doors" class="view">
+                <header class="view-header">
+                    <h1>Doors</h1>
+                    <p class="subtitle">Entry points in the Masjid</p>
+                </header>
+
+                <div class="filters-bar">
+                    <div class="search-wrapper">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="search-doors" class="search-input" placeholder="Search doors...">
+                    </div>
+                </div>
+
+                <div class="doors-grid" id="doors-grid">
+                    <div class="loading">Loading doors...</div>
+                </div>
+            </div>
+
+            <!-- User Detail Modal -->
+            <div id="user-modal" class="modal">
+                <div class="modal-content">
+                    <button class="modal-close">
+                        <i data-lucide="x"></i>
+                    </button>
+                    <div id="user-detail-content"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
