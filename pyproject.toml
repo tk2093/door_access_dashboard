@@ -1,7 +1,7 @@
 [project]
 name = "door-access-dash"
 version = "0.1.0"
-description = "OpenPath Door Access Dashboard for Masjid"
+description = "OpenPath Door Access Dashboard"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

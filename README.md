@@ -1,6 +1,6 @@
-# 🕌 Masjid Door Access Dashboard
+# ASC Door Access Dashboard
 
-An interactive dashboard to monitor and analyze door access at your Masjid using the OpenPath API.
+An interactive dashboard to monitor and analyze door access using the OpenPath API.
 
 ## Features
 
@@ -154,8 +154,6 @@ uv run uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
 ## License
 
-MIT License - feel free to use and modify for your Masjid!
+MIT License - feel free to use!
 
 ---
-
-Built with ❤️ for the Muslim community
