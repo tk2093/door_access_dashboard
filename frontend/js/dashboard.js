@@ -465,7 +465,8 @@ async function loadDashboard() {
 
 async function loadStats() {
     try {
-        const response = await fetch(`${API_BASE}/stats`);
+        const tzOffset = new Date().getTimezoneOffset();
+        const response = await fetch(`${API_BASE}/stats?tz_offset=${tzOffset}`);
         const stats = await response.json();
         
         document.getElementById('stat-today').textContent = formatNumber(stats.today_accesses);
@@ -534,7 +535,7 @@ async function loadCharts() {
     
     // Weekday chart
     try {
-        const weekdayData = await fetch(`${API_BASE}/charts/weekday?${queryParams}`).then(r => r.json());
+        const weekdayData = await fetch(`${API_BASE}/charts/weekday?tz_offset=${tzOffset}&${queryParams}`).then(r => r.json());
         chartData.weekday = weekdayData;
         if (charts.weekday) charts.weekday.destroy();
         charts.weekday = new Chart(document.getElementById('chart-weekday'), {
@@ -572,7 +573,7 @@ async function loadCharts() {
     
     // Daily trend chart
     try {
-        const dailyData = await fetch(`${API_BASE}/charts/daily?${queryParams}`).then(r => r.json());
+        const dailyData = await fetch(`${API_BASE}/charts/daily?tz_offset=${tzOffset}&${queryParams}`).then(r => r.json());
         chartData.daily = dailyData;
         if (charts.daily) charts.daily.destroy();
         charts.daily = new Chart(document.getElementById('chart-daily'), {
@@ -739,9 +740,10 @@ function navigateToLogsForUser(userName) {
 }
 
 function navigateToLogsForDate(dateStr) {
-    const date = new Date(dateStr);
-    const nextDay = new Date(date);
-    nextDay.setDate(nextDay.getDate() + 1);
+    // Parse as local date to avoid timezone shift
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // Local midnight
+    const nextDay = new Date(year, month - 1, day + 1); // Next day local midnight
     
     logsFilters = {
         start_date: date.toISOString(),
@@ -1252,7 +1254,10 @@ function formatLocalDateTime(isoString) {
 
 function formatDateShort(dateString) {
     if (!dateString) return '-';
-    const date = new Date(dateString);
+    // Parse as local date to avoid timezone shift
+    // "2026-01-21" should display as "Jan 21", not shifted by timezone
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month is 0-indexed
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 

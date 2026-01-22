@@ -78,6 +78,7 @@ door_access_dash/
 │   ├── database.py          # SQLAlchemy models
 │   ├── openpath_client.py   # OpenPath API client
 │   ├── sync_service.py      # Data sync service
+│   ├── migrate_to_postgres.py  # SQLite to PostgreSQL migration
 │   └── routes/
 │       ├── dashboard.py     # Dashboard API endpoints
 │       └── sync.py          # Sync API endpoints
@@ -115,19 +116,69 @@ door_access_dash/
 | `DATABASE_URL` | `sqlite+aiosqlite:///./door_access.db` | Database connection |
 | `SYNC_INTERVAL_MINUTES` | `15` | Auto-sync interval |
 
-## Changing Storage
+## Database Options
 
-The app uses SQLAlchemy ORM, making it easy to switch databases:
+The app uses SQLAlchemy ORM, making it easy to switch databases. By default, it uses a local SQLite file, but you can use a cloud-hosted PostgreSQL database to access your data from anywhere.
 
-**PostgreSQL:**
+### Option 1: Local SQLite (Default)
+
+No setup required. Data is stored in `door_access.db` in the project root.
+
 ```
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost/door_access
+DATABASE_URL=sqlite+aiosqlite:///./door_access.db
 ```
+
+### Option 2: Cloud PostgreSQL (Recommended for Portability)
+
+Use a cloud-hosted PostgreSQL database to access your data from any machine.
+
+#### Setting Up Neon (Free Tier)
+
+1. Create a free account at [neon.tech](https://neon.tech)
+2. Create a new project (e.g., "door-access")
+3. Copy your connection string from the dashboard
+4. Update your `.env` file:
+
+```
+DATABASE_URL=postgresql+asyncpg://user:password@ep-xxx.region.aws.neon.tech/dbname?sslmode=require
+```
+
+**Other free PostgreSQL providers:**
+- [Supabase](https://supabase.com) - 500MB free
+- [Railway](https://railway.app) - $5 free credit
+- [Render](https://render.com) - Free PostgreSQL (90-day limit)
+
+#### Migrating Existing Data to PostgreSQL
+
+If you have existing data in SQLite that you want to keep, use the migration script:
+
+```bash
+# Set your target PostgreSQL URL
+export TARGET_DATABASE_URL="postgresql+asyncpg://user:pass@host/db?sslmode=require"
+
+# Run the migration
+uv run python -m backend.migrate_to_postgres
+
+# Or pass the URL directly
+uv run python -m backend.migrate_to_postgres "postgresql+asyncpg://user:pass@host/db?sslmode=require"
+```
+
+The script will:
+1. Read all data from your local SQLite database
+2. Create tables in PostgreSQL
+3. Transfer all users, doors, access logs, and sync status
+4. Verify the migration was successful
+
+After migration, update your `.env` to use the PostgreSQL URL and restart the app.
+
+### Other Databases
 
 **MySQL:**
 ```
 DATABASE_URL=mysql+aiomysql://user:pass@localhost/door_access
 ```
+
+Note: You'll need to install the appropriate async driver (`aiomysql` for MySQL).
 
 ## Deployment
 

@@ -9,13 +9,38 @@ router = APIRouter(prefix="/api", tags=["dashboard"])
 
 
 @router.get("/stats")
-async def get_stats():
+async def get_stats(
+    tz_offset: int = Query(default=0, description="Timezone offset from UTC in minutes (e.g., -480 for PST)")
+):
     """Get overview statistics for the dashboard."""
     async with async_session() as session:
-        now = datetime.utcnow()
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        week_start = today_start - timedelta(days=today_start.weekday())
-        month_start = today_start.replace(day=1)
+        # Convert timezone offset to timedelta
+        # tz_offset is in minutes, negative = behind UTC (e.g., -480 for PST)
+        # We need to ADD the negated offset to UTC to get local time boundaries in UTC
+        offset_delta = timedelta(minutes=tz_offset)
+        
+        # Get current time in user's local timezone, then find local midnight
+        now_utc = datetime.utcnow()
+        now_local = now_utc - offset_delta  # Convert UTC to local time
+        
+        # Calculate local midnight, then convert back to UTC for querying
+        local_today_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start_utc = local_today_start + offset_delta  # Convert local midnight back to UTC
+        
+        # Week start (Monday) in local time, converted to UTC
+        days_since_monday = local_today_start.weekday()
+        local_week_start = local_today_start - timedelta(days=days_since_monday)
+        week_start_utc = local_week_start + offset_delta
+        
+        # Month start in local time, converted to UTC
+        local_month_start = local_today_start.replace(day=1)
+        month_start_utc = local_month_start + offset_delta
+        
+        # Use UTC-converted boundaries for queries
+        today_start = today_start_utc
+        week_start = week_start_utc
+        month_start = month_start_utc
+        now = now_utc
         
         # Total counts
         total_users = await session.scalar(select(func.count(User.id)))
@@ -462,15 +487,24 @@ async def get_hourly_distribution(
 async def get_daily_distribution(
     days: int = Query(default=30, le=365),
     start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+    end_date: Optional[str] = None,
+    tz_offset: int = Query(default=0, description="Timezone offset from UTC in minutes (e.g., -480 for PST)")
 ):
-    """Get access counts by day."""
+    """Get access counts by day, adjusted for local timezone."""
     async with async_session() as session:
         start, end = get_date_range_filter(days, start_date, end_date)
         
+        # Calculate offset in hours for SQLite
+        # tz_offset is in minutes, negative = behind UTC (e.g., -480 for PST)
+        # We need to ADD the offset to UTC to get local time (offset is already signed correctly)
+        offset_hours = -tz_offset // 60  # Negate because JS gives opposite sign
+        
+        # SQLite datetime adjustment: add offset to convert UTC to local
+        offset_str = f"{offset_hours:+d} hours"
+        
         result = await session.execute(
             select(
-                func.date(AccessLog.timestamp).label("date"),
+                func.date(func.datetime(AccessLog.timestamp, offset_str)).label("date"),
                 func.count(AccessLog.id).label("count")
             )
             .where(AccessLog.timestamp >= start, AccessLog.timestamp <= end)
@@ -541,15 +575,20 @@ async def get_access_by_user(
 async def get_weekday_distribution(
     days: int = Query(default=30, le=365),
     start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+    end_date: Optional[str] = None,
+    tz_offset: int = Query(default=0, description="Timezone offset from UTC in minutes (e.g., -480 for PST)")
 ):
-    """Get access distribution by day of week."""
+    """Get access distribution by day of week, adjusted for local timezone."""
     async with async_session() as session:
         start, end = get_date_range_filter(days, start_date, end_date)
         
+        # Calculate offset in hours for SQLite
+        offset_hours = -tz_offset // 60  # Negate because JS gives opposite sign
+        offset_str = f"{offset_hours:+d} hours"
+        
         result = await session.execute(
             select(
-                func.strftime('%w', AccessLog.timestamp).label("weekday"),
+                func.strftime('%w', func.datetime(AccessLog.timestamp, offset_str)).label("weekday"),
                 func.count(AccessLog.id).label("count")
             )
             .where(AccessLog.timestamp >= start, AccessLog.timestamp <= end)
